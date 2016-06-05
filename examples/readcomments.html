@@ -1,0 +1,15 @@
+{{ $dir := .File.BaseFileName | printf "%s%s" .Dir | printf "%s%s" "comments/" }}
+{{ $files := readDir $dir }}
+{{ range $files }}
+	{{ $comment := getJSON $dir "/" .Name }}
+	<article class="comment">
+		<footer class="comment__meta">
+			<div class="comment__avatar-wrap"><img class="comment__avatar-img" src="https://www.gravatar.com/avatar/{{ $comment.GravatarID }}?d=identicon"></div>
+			<div class="comment__name">{{ $comment.Name }}</div>
+			<time class="comment__time" datetime="{{ $comment.Timestamp }}">{{ dateFormat "2006-02-01 15:04" $comment.Timestamp }}</time>
+		</footer>
+		<div class="comment__body">
+			<p>{{ $comment.Body | markdownify }}</p>
+		</div>
+	</article>
+{{ end }}

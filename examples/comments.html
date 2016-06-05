@@ -1,0 +1,17 @@
+ <div class="comments">
+	<h2>Comments</h2>
+{{ partial "readcomments.html" . }}
+</div>
+<h2>Leave a comment</h2>
+<p>Your email address will not be published. You can use markdown in the comment field. To quote text, prefix a line with three double quotes, ie. <code>"""This will be quoted.</code></p>
+<form class="comment-form" id="comment-form" action="/comment" method="POST">
+	<input class="comment-form__field comment-form__field--hidden" type="hidden" name="last_name">
+	<input class="comment-form__field comment-form__field--hidden" type="hidden" name="content_type" value="{{ .File.Ext }}">
+	<input class="comment-form__field comment-form__field--hidden" type="hidden" name="post_id" value="{{ .Dir }}{{ .File.BaseFileName }}">
+	<div class="comment-form__row"><label class="comment-form__label comment-form__label--text" for="c-name">Name*</label><input class="comment-form__field comment-form__field--text" id="c-name" type="text" name="name"></div>
+	<div class="comment-form__row"><label class="comment-form__label comment-form__label--text" for="c-email">Email*</label> <input class="comment-form__field comment-form__field--email" id="c-email" type="email" name="email"></div>
+	<div class="comment-form__row"><label class="comment-form__label comment-form__label--text" for="c-website">Website</label> <input class="comment-form__field comment-form__field--website" id="c-website" type="url" name="website"></div>
+	<div class="comment-form__row"><label class="comment-form__label comment-form__label--textarea" for="c-body">Comment*</label><textarea class="comment-form__field  comment-form__field--textarea" id="c-body" name="body"></textarea></div>
+	<div class="" id="comment-form-message"></div>
+	<div class="comment-form__row"><button class="button comment-form__button" type="submit">Send</button></div>
+</form>
