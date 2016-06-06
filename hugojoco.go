@@ -139,28 +139,28 @@ func saveComment(w http.ResponseWriter, r *http.Request) {
 // TODO: Error messages should be read from a config file
 func validateComment(r *http.Request, contentDir string) (string, error) {
 	form := r.Form
-	if form.Get("last_name") != "" {
+	if len(form.Get("last_name")) > 0 {
 		return "last_name", errors.New("You appear to be a spammer, or your browser auto-fills this form.")
 	}
-	if regexp.MustCompile(`(?i)[\w\s\d\-]+`).MatchString(form.Get("name")) != true {
+	if len(form.Get("name")) > 128 || regexp.MustCompile(`(?i)[\w\s\d\-]+`).MatchString(form.Get("name")) != true {
 		return "name", errors.New("Name is not valid")
 	}
-	if regexp.MustCompile(`^[a-z0-9_.\-\+]+@[a-z0-9_.\-\+]+$`).MatchString(form.Get("email")) != true {
+	if len(form.Get("email")) > 128 || regexp.MustCompile(`^[a-z0-9_.\-\+]+@[a-z0-9_.\-\+]+$`).MatchString(form.Get("email")) != true {
 		return "email", errors.New("Email address is not valid")
 	}
-	if form.Get("website") != "" && regexp.MustCompile(`(https?:\/\/)?[a-z0-9\-\.]+`).MatchString(form.Get("website")) != true {
+	if len(form.Get("website")) > 128 || form.Get("website") != "" && regexp.MustCompile(`(https?:\/\/)?[a-z0-9\-\.]+`).MatchString(form.Get("website")) != true {
 		return "website", errors.New("Website is not valid")
 	}
-	if regexp.MustCompile(`[a-z]+`).MatchString(form.Get("avatar_type")) != true {
+	if len(form.Get("avatar_type")) > 32 || regexp.MustCompile(`[a-z]+`).MatchString(form.Get("avatar_type")) != true {
 		return "avatar_type", errors.New("Avatar type is not valid")
 	}
-	if regexp.MustCompile(`[a-z0-9\-]+(\/[a-z0-9\-]+)*`).MatchString(form.Get("page_id")) != true {
+	if len(form.Get("page_id")) > 1024 || regexp.MustCompile(`[a-z0-9\-]+(\/[a-z0-9\-]+)*`).MatchString(form.Get("page_id")) != true {
 		return "page_id", errors.New("page_id is not valid")
 	}
-	if regexp.MustCompile(`[a-z]+`).MatchString(form.Get("content_type")) != true {
+	if len(form.Get("content_type")) > 4 || regexp.MustCompile(`[a-z]+`).MatchString(form.Get("content_type")) != true {
 		return "content_type", errors.New("Content type is not valid")
 	}
-	if form.Get("body") == "" {
+	if len(form.Get("body")) > 8192 || form.Get("body") == "" {
 		return "body", errors.New("You forgot to write the actual comment!")
 	}
 	if !postExists(form.Get("page_id"), form.Get("content_type"), contentDir) {
