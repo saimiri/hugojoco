@@ -43,16 +43,16 @@ type Comment struct {
 	Website    string
 	GravatarID string
 	IPAddress  string
-	PostID     string
+	PageID     string
 	Body       string
 	Timestamp  string
 }
 
 type Config struct {
-	BaseDir string
+	BaseDir     string
 	CommentsDir string
-	ContentDir string
-	TouchFile string
+	ContentDir  string
+	TouchFile   string
 }
 
 type Response struct {
@@ -60,25 +60,25 @@ type Response struct {
 	IsError bool
 }
 
-var config = Config {
-	BaseDir: ".",
+var config = Config{
+	BaseDir:     ".",
 	CommentsDir: "comments",
-	ContentDir: "content",
-	TouchFile: ".comment" }
+	ContentDir:  "content",
+	TouchFile:   ".comment"}
 
 // Used for testing
-func newComment(w http.ResponseWriter, r *http.Request ) {
-	t, _ := template.ParseFiles( "new.html" );
+func newComment(w http.ResponseWriter, r *http.Request) {
+	t, _ := template.ParseFiles("new.html")
 	t.Execute(w, "")
 }
 
-func saveComment(w http.ResponseWriter, r *http.Request ) {
+func saveComment(w http.ResponseWriter, r *http.Request) {
 	// TODO: Allow other content-types for javascript-disabled clients.
 	// Maybe render a HTML template?
 	w.Header().Set("Content-Type", "application/json")
-	response := Response {
+	response := Response{
 		Message: "",
-		IsError: true }
+		IsError: true}
 
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -96,18 +96,18 @@ func saveComment(w http.ResponseWriter, r *http.Request ) {
 				Website:    r.Form.Get("website"),
 				GravatarID: getGravatarId(r.Form.Get("email")),
 				IPAddress:  getIPAddress(r),
-				PostID:     r.Form.Get("post_id"),
+				PageID:     r.Form.Get("page_id"),
 				Body:       processBody(r.Form.Get("body")),
 				Timestamp:  now.Format(time.RFC3339)}
 
 			// FIXME: Needs error handling
 			jsonData, _ := json.Marshal(comment)
 			filename := buildFilename(comment.Email, buildTimestamp(now))
-			writePath := filepath.Join(config.CommentsDir, comment.PostID)
+			writePath := filepath.Join(config.CommentsDir, comment.PageID)
 			writeCommentToDisk(jsonData, writePath, filename)
 
 			//str := fmt.Sprintf( "%#v", r )
-			
+
 			w.WriteHeader(http.StatusOK)
 			response = Response{
 				Message: "Thank you for the comment",
@@ -140,8 +140,8 @@ func validateComment(r *http.Request, contentDir string) (string, error) {
 	if form.Get("website") != "" && regexp.MustCompile(`(https?:\/\/)?[a-z0-9\-\.]+`).MatchString(form.Get("website")) != true {
 		return "website", errors.New("Website is not valid")
 	}
-	if regexp.MustCompile(`[a-z0-9\-]+(\/[a-z0-9\-]+)*`).MatchString(form.Get("post_id")) != true {
-		return "post_id", errors.New("post_id is not valid")
+	if regexp.MustCompile(`[a-z0-9\-]+(\/[a-z0-9\-]+)*`).MatchString(form.Get("page_id")) != true {
+		return "page_id", errors.New("page_id is not valid")
 	}
 	if regexp.MustCompile(`[a-z]+`).MatchString(form.Get("content_type")) != true {
 		return "content_type", errors.New("Content type is not valid")
@@ -149,8 +149,8 @@ func validateComment(r *http.Request, contentDir string) (string, error) {
 	if form.Get("body") == "" {
 		return "body", errors.New("You forgot to write the actual comment!")
 	}
-	if !postExists(form.Get("post_id"), form.Get("content_type"), contentDir) {
-		return "post_id", errors.New("Specified post does not exist")
+	if !postExists(form.Get("page_id"), form.Get("content_type"), contentDir) {
+		return "page_id", errors.New("Specified post does not exist")
 	}
 	return "", nil
 }
@@ -163,11 +163,11 @@ func isValidPath(path string) bool {
 	return false
 }
 
-func postExists(postID string, extension string, contentDir string) bool {
-	return isValidPath(filepath.Join(contentDir, postID + "." + extension))
+func postExists(pageID string, extension string, contentDir string) bool {
+	return isValidPath(filepath.Join(contentDir, pageID+"."+extension))
 }
 
-func processBody( body string ) string {
+func processBody(body string) string {
 	body = strings.Replace(body, `"""`, "%quote%", -1)
 	body = template.HTMLEscapeString(body)
 	body = strings.Replace(body, "%quote%", ">", -1)
@@ -218,14 +218,14 @@ func writeCommentToDisk(JSON []byte, path string, filename string) error {
 	// FIXME: Needs error handling
 	ioutil.WriteFile(fn, JSON, 0600)
 	if dirCreated == true && config.TouchFile != "" {
-		updateChangeFile(filepath.Join( config.BaseDir, config.TouchFile))
+		updateChangeFile(filepath.Join(config.TouchFile))
 	}
 	return nil
 }
 
-func updateChangeFile(changeFile string) {
+func updateChangeFile(touchFile string) {
 	// FIXME: Needs error handling
-	ioutil.WriteFile(changeFile, []byte("."), 0600)
+	ioutil.WriteFile(touchFile, []byte("."), 0600)
 }
 
 func main() {
@@ -242,12 +242,16 @@ func main() {
 	config.BaseDir = *sourceFlag
 	config.ContentDir = filepath.Join(*sourceFlag, *contentFlag)
 	config.CommentsDir = filepath.Join(*sourceFlag, *commentsFlag)
-	config.TouchFile = filepath.Join(*sourceFlag, *touchFlag)
-	
-	// FIXME: Add 
-	serverAddress := *addressFlag + ":" + *portFlag;
+	if *touchFlag != "" {
+		config.TouchFile = filepath.Join(*sourceFlag, *touchFlag)
+	} else {
+		config.TouchFile = ""
+	}
 
-	http.HandleFunc( *pathFlag, saveComment );
+	// FIXME: Add
+	serverAddress := *addressFlag + ":" + *portFlag
+
+	http.HandleFunc(*pathFlag, saveComment)
 	//http.HandleFunc("/new", newComment );
-	http.ListenAndServe( serverAddress, nil)
+	http.ListenAndServe(serverAddress, nil)
 }
