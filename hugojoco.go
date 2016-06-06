@@ -40,8 +40,9 @@ import (
 type Comment struct {
 	Name       string `json:"name"`
 	Email      string `json:"email"`
+	EmailMd5   string `json:"emailMd5"`
 	Website    string `json:"website"`
-	GravatarID string `json:"gravatarId"`
+	AvatarType string `json:"avatarType"`
 	IPAddress  string `json:"ipv4Address"`
 	PageID     string `json:"pageId"`
 	Body       string `json:"body"`
@@ -93,8 +94,9 @@ func saveComment(w http.ResponseWriter, r *http.Request) {
 			comment := Comment{
 				Name:       r.Form.Get("name"),
 				Email:      r.Form.Get("email"),
+				EmailMd5:   getEmailHash(r.Form.Get("email")),
 				Website:    r.Form.Get("website"),
-				GravatarID: getGravatarId(r.Form.Get("email")),
+				AvatarType: r.Form.Get("avatar_type"),
 				IPAddress:  getIPAddress(r),
 				PageID:     r.Form.Get("page_id"),
 				Body:       processBody(r.Form.Get("body")),
@@ -140,6 +142,9 @@ func validateComment(r *http.Request, contentDir string) (string, error) {
 	if form.Get("website") != "" && regexp.MustCompile(`(https?:\/\/)?[a-z0-9\-\.]+`).MatchString(form.Get("website")) != true {
 		return "website", errors.New("Website is not valid")
 	}
+	if regexp.MustCompile(`[a-z]+`).MatchString(form.Get("avatar_type")) != true {
+		return "avatar_type", errors.New("Avatar type is not valid")
+	}
 	if regexp.MustCompile(`[a-z0-9\-]+(\/[a-z0-9\-]+)*`).MatchString(form.Get("page_id")) != true {
 		return "page_id", errors.New("page_id is not valid")
 	}
@@ -174,7 +179,7 @@ func processBody(body string) string {
 	return body
 }
 
-func getGravatarId(email string) string {
+func getEmailHash(email string) string {
 	hash := md5.Sum([]byte(email))
 	return hex.EncodeToString(hash[:])
 }
