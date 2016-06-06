@@ -22,6 +22,8 @@ package main
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -38,21 +40,25 @@ import (
 )
 
 type Comment struct {
-	Name       string `json:"name"`
-	Email      string `json:"email"`
-	EmailMd5   string `json:"emailMd5"`
-	Website    string `json:"website"`
-	AvatarType string `json:"avatarType"`
-	IPAddress  string `json:"ipv4Address"`
-	PageID     string `json:"pageId"`
-	Body       string `json:"body"`
-	Timestamp  string `json:"timestamp"`
+	Name        string `json:"name"`
+	Email       string `json:"-"`
+	EmailHashed string `json:"emailHashed"`
+	EmailMd5    string `json:"emailMd5"`
+	EmailSha256 string `json:"emailSha256"`
+	EmailSha512 string `json:"emailSha512"`
+	Website     string `json:"website"`
+	AvatarType  string `json:"avatarType"`
+	IPAddress   string `json:"ipv4Address"`
+	PageID      string `json:"pageId"`
+	Body        string `json:"body"`
+	Timestamp   string `json:"timestamp"`
 }
 
 type Config struct {
 	BaseDir     string
 	CommentsDir string
 	ContentDir  string
+	Salt        string
 	TouchFile   string
 }
 
@@ -92,19 +98,22 @@ func saveComment(w http.ResponseWriter, r *http.Request) {
 		} else {
 			now := time.Now()
 			comment := Comment{
-				Name:       r.Form.Get("name"),
-				Email:      r.Form.Get("email"),
-				EmailMd5:   getEmailHash(r.Form.Get("email")),
-				Website:    r.Form.Get("website"),
-				AvatarType: r.Form.Get("avatar_type"),
-				IPAddress:  getIPAddress(r),
-				PageID:     r.Form.Get("page_id"),
-				Body:       processBody(r.Form.Get("body")),
-				Timestamp:  now.Format(time.RFC3339)}
+				Name:        r.Form.Get("name"),
+				Email:       r.Form.Get("email"),
+				EmailHashed: getHash(r.Form.Get("email"), config.Salt),
+				EmailMd5:    getMd5(r.Form.Get("email")),
+				EmailSha256: getSha256(r.Form.Get("email")),
+				EmailSha512: getSha512(r.Form.Get("email")),
+				Website:     r.Form.Get("website"),
+				AvatarType:  r.Form.Get("avatar_type"),
+				IPAddress:   getIPAddress(r),
+				PageID:      r.Form.Get("page_id"),
+				Body:        processBody(r.Form.Get("body")),
+				Timestamp:   now.Format(time.RFC3339)}
 
 			// FIXME: Needs error handling
 			jsonData, _ := json.Marshal(comment)
-			filename := buildFilename(comment.Email, buildTimestamp(now))
+			filename := buildFilename(comment.Name, comment.Body, buildTimestamp(now))
 			writePath := filepath.Join(config.CommentsDir, comment.PageID)
 			writeCommentToDisk(jsonData, writePath, filename)
 
@@ -133,7 +142,7 @@ func validateComment(r *http.Request, contentDir string) (string, error) {
 	if form.Get("last_name") != "" {
 		return "last_name", errors.New("You appear to be a spammer, or your browser auto-fills this form.")
 	}
-	if regexp.MustCompile(`(?i)[\w\s\d]+`).MatchString(form.Get("name")) != true {
+	if regexp.MustCompile(`(?i)[\w\s\d\-]+`).MatchString(form.Get("name")) != true {
 		return "name", errors.New("Name is not valid")
 	}
 	if regexp.MustCompile(`^[a-z0-9_.\-\+]+@[a-z0-9_.\-\+]+$`).MatchString(form.Get("email")) != true {
@@ -179,8 +188,42 @@ func processBody(body string) string {
 	return body
 }
 
-func getEmailHash(email string) string {
-	hash := md5.Sum([]byte(email))
+/*
+getHash returns a salted hash for email addresses. The idea is that in
+case the commenter would like to have an avatar but either doesn't have
+an avatar in an existing service or doesn't want to use them because of
+weaker hashes, we can use this one to generate the avatar picture. The
+email address is still out there, but it requires just a little bit more
+effort from someone to dig it out.
+*/
+func getHash(s string, salt string) string {
+	return getSha512(s + salt)
+}
+
+/*
+getMd5 generates a md5 checksum for given string. Used here to hash the
+email address for Gravatar URLs.
+*/
+func getMd5(s string) string {
+	hash := md5.Sum([]byte(s))
+	return hex.EncodeToString(hash[:])
+}
+
+/*
+getSha256 generates a SHA256 checksum for given string. Used here to
+hash the email address for Libravatar URLs.
+*/
+func getSha256(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
+}
+
+/*
+getSha512 generates a SHA256 checksum for given string. Used here just
+in case.
+*/
+func getSha512(s string) string {
+	hash := sha512.Sum512([]byte(s))
 	return hex.EncodeToString(hash[:])
 }
 
@@ -197,8 +240,23 @@ func debugJSON(comment Comment) string {
 	return str
 }
 
-func buildFilename(email string, timestamp string) string {
-	return timestamp + "-" + email + ".json"
+func buildFilename(name string, msg string, timestamp string) string {
+	firstWords := getFirstWords(name + " " + msg)
+	return timestamp + "-" + firstWords + ".json"
+}
+
+func getFirstWords(s string) string {
+	re, _ := regexp.Compile(`(?i)[a-z]+`)
+	res := re.FindAllStringSubmatch(s, 7)
+	parts := make([]string, 0)
+	for _, part := range res {
+		parts = append(parts, strings.ToLower(part[0]))
+	}
+	joined := strings.Join(parts, "-")
+	if len(joined) > 32 {
+		joined = joined[:32]
+	}
+	return strings.TrimRight(joined, " -")
 }
 
 /*
@@ -241,6 +299,7 @@ func main() {
 	addressFlag := flag.String("address", "", "IP address to use for incoming requests. Defaults to any address.")
 	portFlag := flag.String("port", "8080", "Port to listen to for incoming requests.")
 	pathFlag := flag.String("path", "/comment", "The url path that is used for comment processing.")
+	saltFlag := flag.String("salt", "", "Salt used when generating hashes for anonymous email addresses")
 
 	flag.Parse()
 
@@ -252,11 +311,11 @@ func main() {
 	} else {
 		config.TouchFile = ""
 	}
+	config.Salt = *saltFlag
 
-	// FIXME: Add
 	serverAddress := *addressFlag + ":" + *portFlag
 
 	http.HandleFunc(*pathFlag, saveComment)
-	//http.HandleFunc("/new", newComment );
+	http.HandleFunc("/new", newComment)
 	http.ListenAndServe(serverAddress, nil)
 }
