@@ -41,9 +41,9 @@ type Comment struct {
 	Name       string `json:"name"`
 	Email      string `json:"email"`
 	Website    string `json:"website"`
-	GravatarID string `json:"gravatar_id"`
-	IPAddress  string `json:"ipv4_address"`
-	PageID     string `json:"page_id"`
+	GravatarID string `json:"gravatarId"`
+	IPAddress  string `json:"ipv4Address"`
+	PageID     string `json:"pageId"`
 	Body       string `json:"body"`
 	Timestamp  string `json:"timestamp"`
 }
@@ -57,7 +57,7 @@ type Config struct {
 
 type Response struct {
 	Message string `json:"message"`
-	IsError bool   `json:"is_error"`
+	IsError bool   `json:"isError"`
 }
 
 var config = Config{
