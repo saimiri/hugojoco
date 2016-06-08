@@ -58,6 +58,10 @@ The port that the server listens to. **Default:** 8080
 
 The URL path that is used to process comments. **Default:** /comment
 
+### -touch
+
+The file to modify when a comment is posted. This may be needed with some watch scripts that only modification of existing files, not detect the creation of new files or directories. _Relative to the source directory_. **Default:** none
+
 ## Using With nginx
 
 If you are using nginx you can redirect requests to hugojoco with `proxy_pass`:
