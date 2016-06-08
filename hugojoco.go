@@ -22,8 +22,6 @@ package main
 
 import (
 	"crypto/md5"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -40,18 +38,16 @@ import (
 )
 
 type Comment struct {
-	Name        string `json:"name"`
-	Email       string `json:"-"`
-	EmailHashed string `json:"emailHashed"`
-	EmailMd5    string `json:"emailMd5"`
-	EmailSha256 string `json:"emailSha256"`
-	EmailSha512 string `json:"emailSha512"`
-	Website     string `json:"website"`
-	AvatarType  string `json:"avatarType"`
-	IPAddress   string `json:"ipv4Address"`
-	PageID      string `json:"pageId"`
-	Body        string `json:"body"`
-	Timestamp   string `json:"timestamp"`
+	Name           string `json:"name"`
+	Email          string `json:"-"`
+	EmailMd5       string `json:"emailMd5"`
+	EmailMd5Salted string `json:"emailMd5Salted"`
+	Website        string `json:"website"`
+	AvatarType     string `json:"avatarType"`
+	IPAddress      string `json:"ipv4Address"`
+	PageID         string `json:"pageId"`
+	Body           string `json:"body"`
+	Timestamp      string `json:"timestamp"`
 }
 
 type Config struct {
@@ -92,24 +88,20 @@ func saveComment(w http.ResponseWriter, r *http.Request) {
 		_, err := validateComment(r, config.ContentDir)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			response = Response{
-				Message: err.Error(),
-				IsError: true}
+			response.Message = err.Error()
 		} else {
 			now := time.Now()
 			comment := Comment{
-				Name:        r.Form.Get("name"),
-				Email:       r.Form.Get("email"),
-				EmailHashed: getHash(r.Form.Get("email"), config.Salt),
-				EmailMd5:    getMd5(r.Form.Get("email")),
-				EmailSha256: getSha256(r.Form.Get("email")),
-				EmailSha512: getSha512(r.Form.Get("email")),
-				Website:     r.Form.Get("website"),
-				AvatarType:  r.Form.Get("avatar_type"),
-				IPAddress:   getIPAddress(r),
-				PageID:      r.Form.Get("page_id"),
-				Body:        processBody(r.Form.Get("body")),
-				Timestamp:   now.Format(time.RFC3339)}
+				Name:           r.Form.Get("name"),
+				Email:          r.Form.Get("email"),
+				EmailMd5:       getMd5(r.Form.Get("email"), ""),
+				EmailMd5Salted: getMd5(r.Form.Get("email"), config.Salt),
+				Website:        r.Form.Get("website"),
+				AvatarType:     r.Form.Get("avatar_type"),
+				IPAddress:      getIPAddress(r),
+				PageID:         r.Form.Get("page_id"),
+				Body:           processBody(r.Form.Get("body")),
+				Timestamp:      now.Format(time.RFC3339)}
 
 			// FIXME: Needs error handling
 			jsonData, _ := json.Marshal(comment)
@@ -120,15 +112,12 @@ func saveComment(w http.ResponseWriter, r *http.Request) {
 			//str := fmt.Sprintf( "%#v", r )
 
 			w.WriteHeader(http.StatusOK)
-			response = Response{
-				Message: "Thank you for the comment",
-				IsError: false}
+			response.Message = "Thank you for the comment"
+			response.IsError = false
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
-		response = Response{
-			Message: "Must be POST",
-			IsError: true}
+		response.Message = "Must be POST"
 	}
 	// FIXME: Needs error handling
 	responseJSON, _ := json.Marshal(response)
@@ -188,42 +177,10 @@ func processBody(body string) string {
 	return body
 }
 
-/*
-getHash returns a salted hash for email addresses. The idea is that in
-case the commenter would like to have an avatar but either doesn't have
-an avatar in an existing service or doesn't want to use them because of
-weaker hashes, we can use this one to generate the avatar picture. The
-email address is still out there, but it requires just a little bit more
-effort from someone to dig it out.
-*/
-func getHash(s string, salt string) string {
-	return getSha512(s + salt)
-}
-
-/*
-getMd5 generates a md5 checksum for given string. Used here to hash the
-email address for Gravatar URLs.
-*/
-func getMd5(s string) string {
-	hash := md5.Sum([]byte(s))
-	return hex.EncodeToString(hash[:])
-}
-
-/*
-getSha256 generates a SHA256 checksum for given string. Used here to
-hash the email address for Libravatar URLs.
-*/
-func getSha256(s string) string {
-	hash := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(hash[:])
-}
-
-/*
-getSha512 generates a SHA256 checksum for given string. Used here just
-in case.
-*/
-func getSha512(s string) string {
-	hash := sha512.Sum512([]byte(s))
+// getMd5 generates a md5 checksum for given string with optional salt.
+// Used here to hash the email address for avatar service URLs.
+func getMd5(s string, salt string) string {
+	hash := md5.Sum([]byte(s + salt))
 	return hex.EncodeToString(hash[:])
 }
 
