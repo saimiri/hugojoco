@@ -227,17 +227,15 @@ func buildTimestamp(now time.Time) string {
 }
 
 func writeCommentToDisk(JSON []byte, path string, filename string) error {
-	dirCreated := false
 	// If path doesn't exist, create it
 	if !isValidPath(path) {
 		os.MkdirAll(path, os.ModePerm)
-		dirCreated = true
 	}
 	fn := filepath.Join(path, filename)
 	// Write file to disk
 	// FIXME: Needs error handling
 	ioutil.WriteFile(fn, JSON, 0600)
-	if dirCreated == true && config.TouchFile != "" {
+	if config.TouchFile != "" {
 		updateChangeFile(filepath.Join(config.TouchFile))
 	}
 	return nil
