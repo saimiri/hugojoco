@@ -44,7 +44,7 @@ Sets the comments directory (that is, where the comments are saved) of your site
 
 ### -salt
 
-The salt to be used when hashing the email addresses for internal use. This is not intended to make the hash more secure but to make it unique for each site. **Default:** none
+The salt to use when hashing the email addresses for internal use. This is not intended to make the hash more secure but to make it unique for each site. **Default:** none
 
 ### -address
 
@@ -60,7 +60,7 @@ The URL path that is used to process comments. **Default:** /comment
 
 ### -touch
 
-The file to modify when a comment is posted. This may be needed with some watch scripts that only modification of existing files, not detect the creation of new files or directories. _Relative to the source directory_. **Default:** none
+The file to modify when a comment is posted. This may be needed with some watch scripts that detect only modification of existing files, not the creation of new files or directories. This is _relative to the source directory_. **Default:** none
 
 ## Using With nginx
 
