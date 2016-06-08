@@ -4,7 +4,7 @@ Hugo JSON Comments is a little Go program that listens to POST requests. If they
 
 These files can then read using Hugo's [`readDir` function](https://gohugo.io/extras/localfiles/) and looped through. In the loop each of them can be read with the [`getJSON` function](https://gohugo.io/extras/datadrivencontent/). The decoded comment objects can then used to display the comments.
 
-See http://saimiri.io/comments-in-hugo for a more detailed explanation.
+See http://saimiri.io/2016/06/comments-in-hugo/ for a more detailed explanation.
 
 **Note:** This is still at proof-of-concept level, although I have it in production on my own site.
 
